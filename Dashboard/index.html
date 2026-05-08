@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Meter v2 - Anomaly Detection Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      padding: 20px 0;
+      border-bottom: 3px solid #22c55e;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .logo {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      font-size: 24px;
+      box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+    }
+
+    .logo-text h1 {
+      color: #16a34a;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text p {
+      color: #6b7280;
+      font-size: 12px;
+      margin-top: 2px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #374151;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .refresh-btn {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+    }
+
+    .refresh-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+    }
+
+    .refresh-btn:active {
+      transform: translateY(0);
+    }
+
+    .refresh-btn.loading {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .content {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 4px 20px rgba(34, 197, 94, 0.08);
+      overflow: hidden;
+    }
+
+    .content-header {
+      background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+      padding: 24px;
+      border-bottom: 2px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .content-header h2 {
+      color: #16a34a;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-count {
+      background: #dcfce7;
+      color: #166534;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      padding: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: #f9fafb;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    th {
+      padding: 16px;
+      text-align: left;
+      font-weight: 700;
+      color: #374151;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f3f4f6;
+      color: #1f2937;
+      font-size: 14px;
+    }
+
+    tbody tr {
+      transition: background-color 0.2s ease;
+    }
+
+    tbody tr:hover {
+      background-color: #f9fafb;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status-medium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-low {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .score {
+      color: #22c55e;
+      font-weight: 600;
+    }
+
+    .consumer-id {
+      font-weight: 600;
+      color: #16a34a;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 24px;
+      color: #9ca3af;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 24px;
+      color: #22c55e;
+      font-size: 16px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #e5e7eb;
+      border-top: 3px solid #22c55e;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      padding: 20px;
+      color: #9ca3af;
+      font-size: 13px;
+    }
+
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+      }
+
+      .header-controls {
+        width: 100%;
+        flex-direction: column;
+      }
+
+      .refresh-btn {
+        width: 100%;
+      }
+
+      .logo-text h1 {
+        font-size: 22px;
+      }
+
+      th, td {
+        padding: 12px 8px;
+        font-size: 12px;
+      }
+
+      .status-badge {
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo-section">
+      <div class="logo">⚡</div>
+      <div class="logo-text">
+        <h1>Smart Meter v2</h1>
+        <p>Anomaly Detection System</p>
+      </div>
+    </div>
+    <div class="header-controls">
+      <div class="status-indicator">
+        <div class="status-dot"></div>
+        <span>System Active</span>
+      </div>
+      <button class="refresh-btn" onclick="load()">
+        ⟳ Refresh Data
+      </button>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="content-header">
+      <h2>🚨 Anomaly Alerts</h2>
+      <div class="alert-count" id="alert-count">0 Alerts</div>
+    </div>
+    
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Consumer ID</th>
+            <th>Status</th>
+            <th>Anomaly Score</th>
+          </tr>
+        </thead>
+        <tbody id="t">
+          <tr class="empty-state">
+            <td colspan="3">
+              <div class="empty-state-icon">📊</div>
+              <h3>No alerts loaded yet</h3>
+              <p>Click "Refresh Data" to fetch latest anomaly alerts</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>Smart Meter v2 © 2026 | Real-time Anomaly Detection Dashboard</p>
+  </div>
+</div>
+
+<script>
+function load() {
+  const btn = document.querySelector('.refresh-btn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  
+  const tbody = document.getElementById("t");
+  tbody.innerHTML = '<tr class="loading"><td colspan="3"><span class="spinner"></span>Loading data...</td></tr>';
+
+  fetch("http://127.0.0.1:8000/alerts")
+    .then(res => res.json())
+    .then(data => {
+      tbody.innerHTML = "";
+      
+      if (data.length === 0) {
+        tbody.innerHTML = `
+          <tr class="empty-state">
+            <td colspan="3">
+              <div class="empty-state-icon">✓</div>
+              <h3>All systems normal</h3>
+              <p>No anomalies detected</p>
+            </td>
+          </tr>`;
+        document.getElementById('alert-count').textContent = '0 Alerts';
+      } else {
+        data.forEach(r => {
+          const statusClass = r.anomaly_score >= 0.7 ? 'status-high' : 
+                             r.anomaly_score >= 0.4 ? 'status-medium' : 'status-low';
+          const statusText = r.anomaly_score >= 0.7 ? 'High' : 
+                            r.anomaly_score >= 0.4 ? 'Medium' : 'Low';
+          
+          tbody.innerHTML += `
+            <tr>
+              <td class="consumer-id">${r.consumer_id}</td>
+              <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+              <td class="score">${r.anomaly_score.toFixed(4)}</td>
+            </tr>`;
+        });
+        document.getElementById('alert-count').textContent = data.length + ' Alert' + (data.length !== 1 ? 's' : '');
+      }
+      
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    })
+    .catch(err => {
+      console.error(err);
+      tbody.innerHTML = `
+        <tr class="empty-state">
+          <td colspan="3">
+            <div class="empty-state-icon">⚠️</div>
+            <h3>Error loading data</h3>
+            <p>Could not connect to the server. Please try again.</p>
+          </td>
+        </tr>`;
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    });
+}
+
+// Load data on page load
+window.addEventListener('DOMContentLoaded', load);
+</script>
+
+</body>
+</html>
